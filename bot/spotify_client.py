@@ -52,3 +52,70 @@ class SpotifyController:
         album["artist_name"] = data.get("artists")[0].get("name")
         album["tracks_cnt"] = data.get("total_tracks")
         return album
+
+    def get_playlist_info(self, token: str, playlist_id: str):
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
+        url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 401:
+                token = self.get_unauth_token()
+                return self.get_playlist_info(token, playlist_id)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError:
+            if response.json().get("error"):
+                print(response.json().get("error"))
+                return {"message": "ID corresponding to no playlist"}
+        artists = []
+        if response.json().get("next"):
+            while response.json().get("next"):
+                response = requests.get(url, headers=headers)
+                if response.json().get("items"):
+                    for item in response.json().get("items"):
+                        if item and item.get("track"):
+                            if item.get("track").get("artists")[0]:
+                                single_artist = {
+                                    "playlist_id": playlist_id,
+                                    "artist_id": item.get("track").get(
+                                        "artists"
+                                    )[0]["id"],
+                                    "name": item.get("track").get("artists")[0][
+                                        "name"
+                                    ],
+                                    "track_id": item.get("track").get("id"),
+                                    "track_name": item.get("track").get("name"),
+                                    "album_id": item.get("track")
+                                    .get("album")
+                                    .get("id"),
+                                    "album_name": item.get("track")
+                                    .get("album")
+                                    .get("name"),
+                                }
+                                artists.append(single_artist)
+
+                    url = response.json().get("next")
+        else:
+            for item in response.json().get("items"):
+                if item and item.get("track"):
+                    if item.get("track").get("artists")[0]:
+                        single_artist = {
+                            "playlist_id": playlist_id,
+                            "artist_id": item.get("track").get("artists")[0][
+                                "id"
+                            ],
+                            "name": item.get("track").get("artists")[0]["name"],
+                            "track_id": item.get("track").get("id"),
+                            "track_name": item.get("track").get("name"),
+                            "album_id": item.get("track")
+                            .get("album")
+                            .get("id"),
+                            "album_name": item.get("track")
+                            .get("album")
+                            .get("name"),
+                        }
+                        artists.append(single_artist)
+        return artists

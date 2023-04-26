@@ -4,6 +4,7 @@ from spotify_client import SpotifyController
 import os
 import hashlib
 import xml.etree.ElementTree as ET
+from subsconic_client import SubsonicClient
 
 
 def call_auto_download(album_info: dict):
@@ -27,8 +28,11 @@ def get_bandcamp_info(message):
     }
 
 
-def get_spotify_info(message):
-    album_id = message.split("/")[-1].split("?")[0]
+def get_spotify_info(message, is_url=True):
+    if is_url:
+        album_id = message.split("/")[-1].split("?")[0]
+    else:
+        album_id = message
     sp_client = SpotifyController(
         os.environ["SPOTIFY_CLIENT_ID"], os.environ["SPOTIFY_CLIENT_SECRET"]
     )
@@ -69,27 +73,51 @@ def get_navidrome_playlist_id(navidrome_playlist_name):
     return False
 
 
-def create_navidrome_playlist_file(navidrome_playlist_id):
-    c = "myapi"
-    token = hashlib.md5(
-        f'{os.environ["NAVIDROME_PWD"]}{os.environ["NAVIDROME_SALT"]}'.encode()
-    ).hexdigest()
-    params = {
-        "u": os.environ["NAVIDROME_USER"],
-        "v": os.environ["SUBSONIC_API"],
-        "c": c,
-        "t": token,
-        "s": os.environ["NAVIDROME_SALT"],
-        "id": navidrome_playlist_id,
-    }
-    url = f'http://{os.environ["NAVIDROME_HOST"]}:{os.environ["NAVIDROME_PORT"]}/rest/getPlaylist'
-    response = requests.get(url, params=params)
-    my_xml = response.content
-    root = ET.fromstring(my_xml)
-    BASE_PATH = os.environ["BASE_PATH"]
-    for child in root:
-        with open(f"{child.attrib['name']}.m3u", "w+") as f:
+def create_navidrome_playlist_file(
+    playlist_name: str,
+    playlist_directory: str,
+    music_directory: str,
+):
+    subsonic_client = SubsonicClient(
+        user=os.environ["NAVIDROME_USER"],
+        password=os.environ["NAVIDROME_PWD"],
+        salt=os.environ["NAVIDROME_SALT"],
+        host=os.environ["NAVIDROME_HOST"],
+        port=os.environ["NAVIDROME_PORT"],
+        api_version=os.environ["SUBSONIC_API"],
+    )
+    playlist_id = subsonic_client.get_playlist_id(playlist_name=playlist_name)
+    playlist_tracks = subsonic_client.get_playlist_tracks(
+        playlist_id=playlist_id
+    )
+    try:
+        with open(f"{playlist_directory}/{playlist_name}.m3u", "w+") as f:
             f.write("#EXTM3U\n")
-            for subchild in child:
-                f.write(f"{BASE_PATH}/{subchild.attrib['path']}\n")
-    return True
+            for playlist in playlist_tracks:
+                f.write(f"{music_directory}/{playlist}\n")
+    except:
+        return {"message": "unsuccessful playlist file creation"}
+    return {
+        "message": f"playlist created here: {playlist_directory}/{playlist_name}.m3u"
+    }
+
+
+def album_already_exists(album_name: str, artist_name: str):
+    subsonic_client = SubsonicClient(
+        user=os.environ["NAVIDROME_USER"],
+        password=os.environ["NAVIDROME_PWD"],
+        salt=os.environ["NAVIDROME_SALT"],
+        host=os.environ["NAVIDROME_HOST"],
+        port=os.environ["NAVIDROME_PORT"],
+        api_version=os.environ["SUBSONIC_API"],
+    )
+    artist_id = subsonic_client.get_artist_id(artist_name)
+    if not artist_id:
+        return False
+    albums = subsonic_client.get_artist_albums(artist_id)
+    if not albums:
+        return False
+    for album in albums:
+        if album_name.lower().strip() in album.attrib["name"].lower().strip():
+            return True
+    return False
