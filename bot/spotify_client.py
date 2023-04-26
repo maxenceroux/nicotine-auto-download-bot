@@ -37,7 +37,7 @@ class SpotifyController:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token}",
         }
-        url = f"https://api.spotify.com/v1/albums/{album_id}"
+        url = f"{self._base_url}/v1/albums/{album_id}"
         try:
             response = requests.get(url, headers=headers)
             if response.status_code == 401:
