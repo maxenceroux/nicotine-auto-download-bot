@@ -2,6 +2,8 @@ import requests
 import hashlib
 import xml.etree.ElementTree as ET
 from unidecode import unidecode
+from db_client import DBClient
+import os
 
 
 class SubsonicClient:
@@ -51,9 +53,12 @@ class SubsonicClient:
         my_xml = response.content
         root = ET.fromstring(my_xml)
         playlist_tracks = []
-        for child in root:
-            for subchild in child:
-                playlist_tracks.append(subchild.attrib["path"])
+        with DBClient(os.environ["DB_URL"]) as db_client:
+            for child in root:
+                for subchild in child:
+                    playlist_tracks.append(
+                        db_client.get_media_file_path(subchild.attrib["id"])
+                    )
         return playlist_tracks
 
     def get_artist_id(self, artist_name: str):
