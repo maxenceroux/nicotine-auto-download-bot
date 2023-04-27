@@ -1,5 +1,4 @@
 import requests
-from requests.auth import HTTPBasicAuth
 import hashlib
 import xml.etree.ElementTree as ET
 from unidecode import unidecode

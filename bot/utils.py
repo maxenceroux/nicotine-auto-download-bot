@@ -2,10 +2,9 @@ import requests
 from bs4 import BeautifulSoup
 from spotify_client import SpotifyController
 import os
-import hashlib
-import xml.etree.ElementTree as ET
 from subsconic_client import SubsonicClient
 from unidecode import unidecode
+from db_client import DBClient
 
 
 def call_auto_download(album_info: dict):
@@ -191,15 +190,17 @@ def get_track_path(album_name: str, artist_name: str, track_name: str):
     target_track = unidecode(track_name.lower().strip())
     most_similar_track = ""
     min_distance = float("inf")
-    for track in tracks:
-        this_track = unidecode(track["title"].lower().strip())
-        if target_track in this_track:
-            return track["path"]
-        distance = levenshtein_distance(target_track, this_track)
-        if distance < min_distance:
-            most_similar_track = track
-            min_distance = distance
-    return most_similar_track["path"]
+    with DBClient(os.environ["DB_URL"]) as db_client:
+        for track in tracks:
+            this_track = unidecode(track["title"].lower().strip())
+            if target_track in this_track:
+                return db_client.get_media_file_path(track["path"])
+            distance = levenshtein_distance(target_track, this_track)
+            if distance < min_distance:
+                most_similar_track = track
+                min_distance = distance
+        path = db_client.get_media_file_path(most_similar_track["path"])
+    return path
 
 
 def levenshtein_distance(s1, s2):
