@@ -53,7 +53,7 @@ class SubsonicClient:
         my_xml = response.content
         root = ET.fromstring(my_xml)
         playlist_tracks = []
-        with DBClient(os.environ["DB_URL"]) as db_client:
+        with DBClient("/db/music.db") as db_client:
             for child in root:
                 for subchild in child:
                     playlist_tracks.append(

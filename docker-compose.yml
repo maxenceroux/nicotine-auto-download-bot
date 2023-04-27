@@ -24,7 +24,8 @@ services:
     volumes:
       - ./bot:/app
       - ${PLAYLIST_DIR}:/playlists
-      - ${DB_URL}:/db
+      - ${DB_URL}:/db/music.db
+
 
     
     
