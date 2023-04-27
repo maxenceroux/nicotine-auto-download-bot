@@ -194,13 +194,16 @@ def get_track_path(album_name: str, artist_name: str, track_name: str):
         for track in tracks:
             this_track = unidecode(track["title"].lower().strip())
             if target_track in this_track:
-                return db_client.get_media_file_path(track["path"])
+                file_path = db_client.get_media_file_path(track["path"])
+                file_path = file_path.split("/music/")[1]
+                return file_path
             distance = levenshtein_distance(target_track, this_track)
             if distance < min_distance:
                 most_similar_track = track
                 min_distance = distance
-        path = db_client.get_media_file_path(most_similar_track["path"])
-    return path
+        file_path = db_client.get_media_file_path(most_similar_track["path"])
+        file_path = file_path.split("/music/")[1]
+    return file_path
 
 
 def levenshtein_distance(s1, s2):

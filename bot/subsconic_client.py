@@ -56,9 +56,11 @@ class SubsonicClient:
         with DBClient("/db/music.db") as db_client:
             for child in root:
                 for subchild in child:
-                    playlist_tracks.append(
-                        db_client.get_media_file_path(subchild.attrib["id"])
+                    file_path = db_client.get_media_file_path(
+                        subchild.attrib["id"]
                     )
+                    file_path = file_path.split("/music/")[1]
+                    playlist_tracks.append(file_path)
         return playlist_tracks
 
     def get_artist_id(self, artist_name: str):
