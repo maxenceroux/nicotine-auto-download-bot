@@ -190,7 +190,7 @@ def get_track_path(album_name: str, artist_name: str, track_name: str):
     target_track = unidecode(track_name.lower().strip())
     most_similar_track = ""
     min_distance = float("inf")
-    with DBClient(os.environ["DB_URL"]) as db_client:
+    with DBClient("/db/music.db") as db_client:
         for track in tracks:
             this_track = unidecode(track["title"].lower().strip())
             if target_track in this_track:
