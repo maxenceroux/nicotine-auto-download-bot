@@ -5,6 +5,7 @@ import os
 import hashlib
 import xml.etree.ElementTree as ET
 from subsconic_client import SubsonicClient
+from unidecode import unidecode
 
 
 def call_auto_download(album_info: dict):
@@ -12,6 +13,28 @@ def call_auto_download(album_info: dict):
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     response = requests.post(url, params=album_info, headers=headers)
     return response
+
+
+def get_playlist_info(message, is_url=True):
+    if is_url:
+        playlist_id = message.split("/")[-1].split("?")[0]
+    else:
+        playlist_id = message
+    sp_client = SpotifyController(
+        os.environ["SPOTIFY_CLIENT_ID"],
+        os.environ["SPOTIFY_CLIENT_SECRET"],
+    )
+    token = sp_client.get_unauth_token()
+    playlist = sp_client.get_playlist_tracks(token, playlist_id)
+    unique_albums_ids = []
+    for track in playlist:
+        album_id = track["album_id"]
+        if album_id not in unique_albums_ids:
+            unique_albums_ids.append(album_id)
+    albums_info = []
+    for id in unique_albums_ids:
+        albums_info.append(get_spotify_info(id, False))
+    return albums_info
 
 
 def get_bandcamp_info(message):
@@ -48,34 +71,8 @@ def get_spotify_info(message, is_url=True):
     }
 
 
-def get_navidrome_playlist_id(navidrome_playlist_name):
-    c = "myapi"
-    token = hashlib.md5(
-        f'{os.environ["NAVIDROME_PWD"]}{os.environ["NAVIDROME_SALT"]}'.encode()
-    ).hexdigest()
-    playlist_id = "a1d847d6-48e4-44f6-8339-0efcbd35ff2d"
-    params = {
-        "u": os.environ["NAVIDROME_USER"],
-        "v": os.environ["SUBSONIC_API"],
-        "c": c,
-        "t": token,
-        "s": os.environ["NAVIDROME_SALT"],
-        "id": playlist_id,
-    }
-    url = f'http://{os.environ["NAVIDROME_HOST"]}:{os.environ["NAVIDROME_PORT"]}/rest/getPlaylists'
-    response = requests.get(url, params=params)
-    my_xml = response.content
-    root = ET.fromstring(my_xml)
-    for child in root:
-        for subchild in child:
-            if subchild.attrib["name"] == navidrome_playlist_name:
-                return subchild.attrib["id"]
-    return False
-
-
-def create_navidrome_playlist_file(
+def create_playlist_file_from_navidrome_playlist(
     playlist_name: str,
-    playlist_directory: str,
     music_directory: str,
 ):
     subsonic_client = SubsonicClient(
@@ -91,14 +88,55 @@ def create_navidrome_playlist_file(
         playlist_id=playlist_id
     )
     try:
-        with open(f"{playlist_directory}/{playlist_name}.m3u", "w+") as f:
+        with open(f"/playlists/{playlist_name}.m3u", "w+") as f:
+            f.write("#EXTM3U\n")
+            for playlist in playlist_tracks:
+                f.write(f"{music_directory}/{playlist}\n")
+
+        return {
+            "message": f"playlist created here: {os.environ['PLAYLIST_DIR']}/{playlist_name}.m3u"
+        }
+    except Exception as e:
+        raise e
+
+
+def create_playlist_file_from_spotify_playlist(
+    message: str,
+    music_directory: str,
+    is_url: bool = True,
+):
+    if is_url:
+        playlist_id = message.split("/")[-1].split("?")[0]
+    else:
+        playlist_id = message
+    sp_client = SpotifyController(
+        os.environ["SPOTIFY_CLIENT_ID"], os.environ["SPOTIFY_CLIENT_SECRET"]
+    )
+    token = sp_client.get_unauth_token()
+    try:
+        playlist_info = sp_client.get_playlist_info(token, playlist_id)
+        playlist_tracks = sp_client.get_playlist_tracks(token, playlist_id)
+    except:
+        raise
+
+    tracks_path = []
+    for playlist_track in playlist_tracks:
+        tracks_path.append(
+            get_track_path(
+                playlist_track["album_name"],
+                playlist_track["name"],
+                playlist_track["track_name"],
+            )
+        )
+    try:
+        with open(f"/playlists/{playlist_info['name']}.m3u", "w+") as f:
             f.write("#EXTM3U\n")
             for playlist in playlist_tracks:
                 f.write(f"{music_directory}/{playlist}\n")
     except:
         return {"message": "unsuccessful playlist file creation"}
     return {
-        "message": f"playlist created here: {playlist_directory}/{playlist_name}.m3u"
+        "message": f"playlist created here: {os.environ['PLAYLIST_DIR']}/{playlist_info['name']}.m3u"
     }
 
 
@@ -118,6 +156,68 @@ def album_already_exists(album_name: str, artist_name: str):
     if not albums:
         return False
     for album in albums:
-        if album_name.lower().strip() in album.attrib["name"].lower().strip():
+        if unidecode(album_name.lower().strip()) in unidecode(
+            album.attrib["name"].lower().strip()
+        ):
             return True
     return False
+
+
+def get_track_path(album_name: str, artist_name: str, track_name: str):
+    subsonic_client = SubsonicClient(
+        user=os.environ["NAVIDROME_USER"],
+        password=os.environ["NAVIDROME_PWD"],
+        salt=os.environ["NAVIDROME_SALT"],
+        host=os.environ["NAVIDROME_HOST"],
+        port=os.environ["NAVIDROME_PORT"],
+        api_version=os.environ["SUBSONIC_API"],
+    )
+    artist_id = subsonic_client.get_artist_id(artist_name)
+    if not artist_id:
+        return None
+    albums = subsonic_client.get_artist_albums(artist_id)
+    if not albums:
+        return None
+    this_album = None
+    for album in albums:
+        if unidecode(album_name.lower().strip()) in unidecode(
+            album["name"].lower().strip()
+        ):
+            this_album = album
+            break
+    if not this_album:
+        return None
+    tracks = subsonic_client.get_album_tracks(this_album["id"])
+    target_track = unidecode(track_name.lower().strip())
+    most_similar_track = ""
+    min_distance = float("inf")
+    for track in tracks:
+        this_track = unidecode(track["title"].lower().strip())
+        if target_track in this_track:
+            return track["path"]
+        distance = levenshtein_distance(target_track, this_track)
+        if distance < min_distance:
+            most_similar_track = track
+            min_distance = distance
+    return most_similar_track["path"]
+
+
+def levenshtein_distance(s1, s2):
+    m = len(s1)
+    n = len(s2)
+    # create a matrix of size (m+1)x(n+1) to store the distances
+    d = [[0] * (n + 1) for i in range(m + 1)]
+    # initialize the first row and column of the matrix
+    for i in range(m + 1):
+        d[i][0] = i
+    for j in range(n + 1):
+        d[0][j] = j
+    # fill in the rest of the matrix
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            cost = 0 if s1[i - 1] == s2[j - 1] else 1
+            d[i][j] = min(
+                d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost
+            )
+    # return the distance between s1 and s2
+    return d[m][n]

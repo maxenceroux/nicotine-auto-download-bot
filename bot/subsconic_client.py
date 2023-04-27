@@ -2,6 +2,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import hashlib
 import xml.etree.ElementTree as ET
+from unidecode import unidecode
 
 
 class SubsonicClient:
@@ -68,10 +69,9 @@ class SubsonicClient:
         for child in root:
             for subchild in child:
                 for sub in subchild:
-                    if (
+                    if unidecode(
                         sub.attrib["name"].lower().strip()
-                        == artist_name.lower().strip()
-                    ):
+                    ) == unidecode(artist_name.lower().strip()):
                         return sub.attrib["id"]
         return None
 
@@ -89,6 +89,22 @@ class SubsonicClient:
         albums = []
         for child in root:
             for subchild in child:
-                albums.append(subchild)
-                return albums
+                albums.append(subchild.attrib)
         return albums
+
+    def get_album_tracks(self, album_id: str):
+        url = f"{self._base_url}/getAlbum"
+        params = self.params
+        params["id"] = album_id
+        try:
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            raise SystemExit(err)
+        my_xml = response.content
+        root = ET.fromstring(my_xml)
+        tracks = []
+        for child in root:
+            for subchild in child:
+                tracks.append(subchild.attrib)
+        return tracks

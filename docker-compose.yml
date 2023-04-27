@@ -10,6 +10,7 @@ services:
       - 8002:8000
     volumes:
       - ./app:/app
+      - ${PLAYLIST_DIR}:/playlists
     env_file:
       - ./app/.env
   bot:
@@ -21,6 +22,7 @@ services:
       - ./app/.env
     volumes:
       - ./bot:/app
+      - ${PLAYLIST_DIR}:/playlists
 
     
     

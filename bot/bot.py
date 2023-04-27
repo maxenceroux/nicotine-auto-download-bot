@@ -1,6 +1,7 @@
 import discord
 import os
 from utils import *
+import time
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -19,6 +20,19 @@ async def on_message(message):
         return
     print("New message received: {0.content}".format(message))
     if message.channel.name == "downloads":
+        if message.content.startswith("!playlist"):
+            if "spotify.com" in message.content:
+                albums_info = get_playlist_info(message.content, True)
+                for album_info in albums_info:
+                    if album_already_exists(
+                        album_info["album_name"], album_info["artist_name"]
+                    ):
+                        print(
+                            f'album {album_info["album_name"]} already existing - skipping'
+                        )
+                    else:
+                        call_auto_download(album_info)
+                return True
         if "bandcamp.com" in message.content:
             try:
                 album_info = get_bandcamp_info(message.content)
@@ -38,14 +52,30 @@ async def on_message(message):
             return False
         call_auto_download(album_info)
     if message.channel.name == "playlists":
-        playlist_id = get_navidrome_playlist_id(message.content)
-        if playlist_id:
-            create_navidrome_playlist_file(playlist_id)
+        if "spotify.com" in message.content:
+            try:
+                create_playlist_file_from_spotify_playlist(
+                    message.content,
+                    os.environ["BASE_PATH"],
+                    True,
+                )
+                await message.channel.send(
+                    f"Playlist file created from {message.content} playlist"
+                )
+                return True
+            except Exception as e:
+                await message.channel.send(f"Playlist not found {e}")
+                return False
+        try:
+            create_playlist_file_from_navidrome_playlist(
+                message.content,
+                os.environ["BASE_PATH"],
+            )
             await message.channel.send(
                 f"Playlist file created from {message.content} playlist"
             )
-        else:
-            await message.channel.send("Playlist not found")
+        except Exception as e:
+            await message.channel.send(f"Playlist not found {e}")
             return False
 
 

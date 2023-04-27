@@ -59,12 +59,32 @@ class SpotifyController:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token}",
         }
-        url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+        url = f"{self._base_url}/v1/playlists/{playlist_id}"
         try:
             response = requests.get(url, headers=headers)
             if response.status_code == 401:
                 token = self.get_unauth_token()
-                return self.get_playlist_info(token, playlist_id)
+                return self.get_playlist_tracks(token, playlist_id)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            raise SystemExit(err)
+        playlist = {}
+        playlist["name"] = response.json().get("name")
+        playlist["spotify_id"] = playlist_id
+        return playlist
+
+    def get_playlist_tracks(self, token: str, playlist_id: str):
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
+        url = f"{self._base_url}/v1/playlists/{playlist_id}/tracks"
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 401:
+                token = self.get_unauth_token()
+                return self.get_playlist_tracks(token, playlist_id)
             response.raise_for_status()
         except requests.exceptions.HTTPError:
             if response.json().get("error"):
