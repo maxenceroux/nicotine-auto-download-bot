@@ -10,19 +10,21 @@ services:
       - 8002:8000
     volumes:
       - ./app:/app
+      - ./clients:/app/clients
       - ${PLAYLIST_DIR}:/playlists
       - ${DB_URL}:/db
     env_file:
-      - ./app/.env
+      - .env
   bot:
     build:
       context: .
       dockerfile: Dockerfile.bot
     container_name: nicotine-discord-bot
     env_file:
-      - ./app/.env
+      - .env
     volumes:
       - ./bot:/app
+      - ./clients:/app/clients
       - ${PLAYLIST_DIR}:/playlists
       - ${DB_URL}:/db/music.db
 

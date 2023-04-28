@@ -31,6 +31,28 @@ class SpotifyController:
             raise SystemExit(err)
         return response.json().get("access_token")
 
+    def search_track_info(self, token: str, track_name: str, artist_name: str):
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
+        url = f"{self._base_url}/v1/search?q=track%3A%22{track_name}%22+artist%3A%22{artist_name}%22&type=track&limit=1"
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 401:
+                token = self.get_unauth_token()
+                return self.search_track_info(token, track_name, artist_name)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            raise SystemExit(err)
+        data = response.json()
+        if data["tracks"]["total"] > 0:
+            track_info = data["tracks"]["items"][0]
+            return track_info
+        else:
+            return None
+
     def get_album_info(self, token: str, album_id: str):
         headers = {
             "Accept": "application/json",

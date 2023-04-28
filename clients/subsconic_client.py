@@ -2,7 +2,7 @@ import requests
 import hashlib
 import xml.etree.ElementTree as ET
 from unidecode import unidecode
-from db_client import DBClient
+from clients.db_client import DBClient
 import os
 
 

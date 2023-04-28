@@ -1,10 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
-from spotify_client import SpotifyController
+from clients.spotify_client import SpotifyController
 import os
-from subsconic_client import SubsonicClient
+from clients.subsconic_client import SubsonicClient
 from unidecode import unidecode
-from db_client import DBClient
+from clients.db_client import DBClient
 
 
 def call_auto_download(album_info: dict):
