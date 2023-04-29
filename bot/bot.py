@@ -38,7 +38,7 @@ async def on_message(message):
             except:
                 await message.channel.send("Album not found on Bandcamp")
                 return False
-        if "spotify.com" in message.content:
+        elif "spotify.com" in message.content:
             try:
                 album_info = get_spotify_info(message.content)
             except:

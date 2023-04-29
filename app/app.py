@@ -16,6 +16,11 @@ app = FastAPI()
 origins = [
     "http://localhost",
     "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://localhost:3003",
+    "http://localhost:3004",
+    "http://localhost:3005",
 ]
 
 app.add_middleware(
@@ -75,8 +80,16 @@ def get_currently_playing():
         os.environ["ICECAST_PASSWORD"],
     )
     track = icecast_client.get_currently_playing()
+    result = {}
     last_fm_client = LastFMClient(os.environ["LAST_FM_API_KEY"])
-    artist = last_fm_client.get_artist_info(track["artist"])
+    try:
+        artist = last_fm_client.get_artist_info(track["artist"])
+        result["content"] = artist["bio"]["content"].split(
+            "User-contributed text"
+        )[0]
+    except:
+        result["content"] = None
+
     sp_client = SpotifyController(
         os.environ["SPOTIFY_CLIENT_ID"],
         os.environ["SPOTIFY_CLIENT_SECRET"],
@@ -85,14 +98,12 @@ def get_currently_playing():
     track_info = sp_client.search_track_info(
         token, track["title"], track["artist"]
     )
-    result = {}
-    result["artist_name"] = artist["name"]
+
+    result["artist_name"] = track["artist"]
     try:
         result["image_url"] = track_info["album"]["images"][0]["url"]
     except:
         result["image_url"] = None
-    result["content"] = artist["bio"]["content"].split("User-contributed text")[
-        0
-    ]
+
     result["track_name"] = track["title"]
     return result
