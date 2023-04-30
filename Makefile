@@ -7,3 +7,7 @@ migrate-db:
 
 start-docker:
 	docker compose -f docker-compose.yml up
+
+migrate-db-prod:
+	docker compose exec web alembic revision --autogenerate
+	docker compose exec web alembic upgrade head
