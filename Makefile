@@ -4,3 +4,6 @@ start-dev-docker:
 migrate-db:
 	docker-compose exec web alembic revision --autogenerate
 	docker-compose exec web alembic upgrade head
+
+start-docker:
+	docker compose -f docker-compose.yml up

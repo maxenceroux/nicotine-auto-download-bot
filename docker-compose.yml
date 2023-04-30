@@ -26,5 +26,21 @@ services:
     volumes:
       - ./bot:/app
       - ./clients:/app/clients
+      - ./app/models.py:/app/models.py
       - ${PLAYLIST_DIR}:/playlists
       - ${DB_URL}:/db/music.db
+  postgres:
+    container_name: postgres-raxdio
+    image: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      PGDATA: /data/postgres
+    volumes:
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres-raxdio:/data/postgres
+      - ./app/queries:/scripts
+    ports:
+      - "5432:5432"
+volumes:
+  postgres-raxdio: null

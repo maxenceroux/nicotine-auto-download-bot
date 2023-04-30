@@ -129,7 +129,7 @@ class Message(BaseModel):
 def create_message(message: Message):
     with RaxdioDB(os.environ["PG_DB_URL"]) as db:
         db.insert_message(message.username, message.content)
-    return True
+    return {"success":"message saved in db"}
 
 
 @app.get("/messages")
