@@ -9,6 +9,7 @@ from discord import SyncWebhook
 from clients.icecast_client import IcecastClient
 from clients.lastfm_client import LastFMClient
 from clients.spotify_client import SpotifyController
+from clients.db_client import RaxdioDB
 
 app = FastAPI()
 
@@ -107,3 +108,32 @@ def get_currently_playing():
 
     result["track_name"] = track["title"]
     return result
+
+
+@app.post("/user")
+def create_user(username: str):
+    with RaxdioDB(os.environ["PG_DB_URL"]) as db:
+        db_user = db.insert_user(username)
+    return db_user
+
+
+from pydantic import BaseModel
+
+
+class Message(BaseModel):
+    username: str
+    content: str
+
+
+@app.post("/message")
+def create_message(message: Message):
+    with RaxdioDB(os.environ["PG_DB_URL"]) as db:
+        db.insert_message(message.username, message.content)
+    return True
+
+
+@app.get("/messages")
+def get_messages():
+    with RaxdioDB(os.environ["PG_DB_URL"]) as db:
+        messages = db.get_messages()
+    return messages
