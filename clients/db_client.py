@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import User, Message
 import datetime
+import pytz
 
 
 class DBClient:
@@ -43,7 +44,7 @@ class RaxdioDB:
         db_message = Message(
             username=username,
             content=message,
-            created_at=datetime.datetime.now(),
+            created_at=datetime.datetime.utcnow().replace(tzinfo=pytz.utc),
         )
         self.session.add(db_message)
         self.session.commit()
