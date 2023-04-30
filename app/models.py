@@ -27,4 +27,4 @@ class Message(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String)
     content = Column(String)
-    created_at = Column(DateTime)
+    created_at = Column(DateTime(timezone=True))
