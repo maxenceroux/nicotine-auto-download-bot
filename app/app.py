@@ -105,9 +105,29 @@ def get_currently_playing():
         result["image_url"] = track_info["album"]["images"][0]["url"]
     except:
         result["image_url"] = None
-
     result["track_name"] = track["title"]
-    return result
+    tracks = []
+    with RaxdioDB(os.environ["PG_DB_URL"]) as db:
+        if db.is_new_song(result["track_name"], result["artist_name"]):
+            db.add_to_history_songs(
+                result["track_name"],
+                result["artist_name"],
+                result["content"],
+                result["image_url"],
+            )
+        all_tracks = db.get_tracks()
+        tracks.append(all_tracks[0])
+        try:
+            tracks.append(all_tracks[1])
+        except:
+            tracks.append(None)
+            tracks.append(None)
+            return tracks
+        try:
+            tracks.append(all_tracks[2])
+        except:
+            tracks.append(None)
+    return tracks
 
 
 @app.post("/user")
@@ -129,7 +149,7 @@ class Message(BaseModel):
 def create_message(message: Message):
     with RaxdioDB(os.environ["PG_DB_URL"]) as db:
         db.insert_message(message.username, message.content)
-    return {"success":"message saved in db"}
+    return {"success": "message saved in db"}
 
 
 @app.get("/messages")

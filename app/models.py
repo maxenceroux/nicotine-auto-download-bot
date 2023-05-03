@@ -28,3 +28,13 @@ class Message(Base):
     username = Column(String)
     content = Column(String)
     created_at = Column(DateTime(timezone=True))
+
+
+class HistorySongs(Base):
+    __tablename__ = "history_songs"
+    id = Column(Integer, primary_key=True, index=True)
+    played_at = Column(DateTime(timezone=True))
+    title = Column(String)
+    artist = Column(String)
+    artist_image = Column(String)
+    description = Column(String)

@@ -12,7 +12,7 @@ class IcecastClient:
         url = f"{self._base_url}/admin/stats"
         response = requests.get(url, auth=(self.username, self.password))
         root = ET.fromstring(response.content)
-        source = root.find("source")
+        source = root.findall("./source")[1]
         title = source.find("title").text
         artist = source.find("artist").text
         return {"artist": artist, "title": title}

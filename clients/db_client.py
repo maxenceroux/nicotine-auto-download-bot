@@ -1,7 +1,7 @@
 import sqlite3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import User, Message
+from models import User, Message, HistorySongs
 import datetime
 import pytz
 
@@ -68,6 +68,49 @@ class RaxdioDB:
             )
 
         return results
+
+    def is_new_song(self, title: str, artist: str):
+        last_song = (
+            self.session.query(HistorySongs)
+            .order_by(HistorySongs.played_at.desc())
+            .first()
+        )
+        if not last_song:
+            return True
+        if last_song.title == title and last_song.artist == artist:
+            return False
+        else:
+            return True
+
+    def add_to_history_songs(
+        self, title: str, artist: str, description: str, artist_image: str
+    ):
+        last_three_songs = (
+            self.session.query(HistorySongs)
+            .order_by(HistorySongs.played_at.desc())
+            .all()
+        )
+        if len(last_three_songs) == 3:
+            self.session.delete(last_three_songs[-1])
+
+        new_song = HistorySongs(
+            title=title,
+            artist=artist,
+            description=description,
+            artist_image=artist_image,
+            played_at=datetime.datetime.utcnow().replace(tzinfo=pytz.utc),
+        )
+        self.session.add(new_song)
+        self.session.commit()
+        return new_song
+
+    def get_tracks(self):
+        tracks = (
+            self.session.query(HistorySongs)
+            .order_by(HistorySongs.played_at.desc())
+            .all()
+        )
+        return tracks
 
     def __enter__(self):
         return self
