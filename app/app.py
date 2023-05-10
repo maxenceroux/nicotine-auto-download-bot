@@ -72,6 +72,15 @@ class Playlist(BaseModel):
     ordered_tracks: List[Track]
 
 
+@app.get("/current_show")
+def get_current_show():
+    with RaxdioDB(os.environ["PG_DB_URL"]) as db:
+        show = db.get_current_show()
+    if show:
+        return f"{os.environ['PLAYLIST_DIR']}{show.playlist_path}"
+    return f"{os.environ['PLAYLIST_DIR']}/playlists/raxdio.m3u"
+
+
 @app.post("/show")
 def create_show(slot: Slot, background_tasks: BackgroundTasks):
     slot_date = datetime.strptime(slot.start_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")

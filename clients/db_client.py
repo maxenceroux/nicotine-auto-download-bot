@@ -167,6 +167,7 @@ class RaxdioDB:
             ig_url=ig_url,
             bandcamp_url=bc_url,
             soundcloud_url=sc_url,
+            created_at=datetime.datetime.now(),
         )
         self.session.add(new_show)
         self.session.commit()
@@ -187,13 +188,32 @@ class RaxdioDB:
         shows = (
             self.session.query(Show)
             .filter(
-                Show.start_time >= datetime.datetime.now(),
+                Show.start_time
+                >= datetime.datetime.now() + datetime.timedelta(days=-1),
                 Show.start_time
                 <= datetime.datetime.now() + datetime.timedelta(days=7),
+                Show.playlist_path != None,
             )
             .all()
         )
         return shows
+
+    def get_current_show(self):
+        now = datetime.datetime.now()
+        one_hour_ago = now - datetime.timedelta(hours=1)
+        show = (
+            self.session.query(Show)
+            .filter(
+                Show.start_time >= one_hour_ago,
+                Show.start_time
+                <= datetime.datetime.now() + datetime.timedelta(hours=1),
+                Show.playlist_path != None,
+            )
+            .first()
+        )
+        if show:
+            return show
+        return None
 
     def __enter__(self):
         return self
