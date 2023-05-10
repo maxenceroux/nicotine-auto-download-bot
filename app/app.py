@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from typing import List, Optional
+from fastapi import FastAPI, BackgroundTasks, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-
+from datetime import datetime
 import socket
 import json
 import time
@@ -9,7 +10,13 @@ from discord import SyncWebhook
 from clients.icecast_client import IcecastClient
 from clients.lastfm_client import LastFMClient
 from clients.spotify_client import SpotifyController
-from clients.db_client import RaxdioDB
+from clients.db_client import RaxdioDB, DBClient
+from utils import (
+    get_playlist_info,
+    album_already_exists,
+    call_auto_download,
+    workflow_spotify_playlist,
+)
 
 app = FastAPI()
 
@@ -31,6 +38,130 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+from pydantic import BaseModel
+
+
+class Message(BaseModel):
+    username: str
+    content: str
+
+
+class Slot(BaseModel):
+    start_datetime: str
+    author: str
+    name: str
+    playlist_url: str
+    description: str
+    ig_url: Optional[str]
+    bc_url: Optional[str]
+    sc_url: Optional[str]
+
+
+class Track(BaseModel):
+    index: Optional[int]
+    title: str
+    artist: Optional[str]
+
+
+class Playlist(BaseModel):
+    start_datetime: str
+    author: str
+    name: str
+    ordered_tracks: List[Track]
+
+
+@app.post("/show")
+def create_show(slot: Slot, background_tasks: BackgroundTasks):
+    slot_date = datetime.strptime(slot.start_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")
+    with RaxdioDB(os.environ["PG_DB_URL"]) as db:
+        show = db.create_show(
+            slot_date,
+            slot.author,
+            slot.name,
+            slot.playlist_url,
+            slot.description,
+            slot.ig_url,
+            slot.bc_url,
+            slot.sc_url,
+        )
+    playlist_id = slot.playlist_url.split("/")[-1].split("?")[0]
+    background_tasks.add_task(
+        workflow_spotify_playlist,
+        playlist_id,
+        slot.name,
+        slot.author,
+        slot_date,
+    )
+    return {"message": "Data submitted for processing."}
+
+
+@app.post("/upload_track/")
+async def create_upload_track(file: UploadFile = File(...)):
+    file_path = os.path.join("/music", file.filename)
+    with open(file_path, "wb") as f:
+        while True:
+            content = await file.read(1024)  # read in 1kb chunk
+            if not content:
+                break
+            f.write(content)
+    return {"filename": file.filename}
+
+
+@app.post("/save_playlist")
+def save_playlist(playlist: Playlist):
+    show_date = datetime.strptime(
+        playlist.start_datetime, "%Y-%m-%dT%H:%M:%S.%fZ"
+    )
+    show_date_str = show_date.strftime("%Y%m%d%H")
+    playlist_path = (
+        f"/playlists/{show_date_str}_{playlist.name}_{playlist.author}.m3u"
+    )
+    with open(playlist_path, "w+") as f:
+        f.write("#EXTM3U\n")
+        with DBClient("/db/music.db") as db_client:
+            for track in playlist.ordered_tracks:
+                if track.artist:
+                    track_path = db_client.get_medial_file_path_by_title(
+                        track.title
+                    )
+                    f.write(f"{os.environ['BASE_PATH']}{track_path}\n")
+                else:
+                    f.write(f"{os.environ['BASE_PATH']}/music/{track.title}\n")
+
+
+@app.get("/playlist_tracks")
+def get_playlist_tracks(show_time: str, show_name: str, show_author: str):
+    show_date = datetime.strptime(show_time, "%Y-%m-%dT%H:%M:%S.%fZ")
+    show_date_str = show_date.strftime("%Y%m%d%H")
+    playlist_path = f"/playlists/{show_date_str}_{show_name}_{show_author}.m3u"
+    if not os.path.exists(playlist_path):
+        return None
+    tracks = []
+    with open(playlist_path, "r") as f:
+        next(f)
+        with DBClient("/db/music.db") as db_client:
+            index = 1
+            for track in f:
+                path = track.split(os.environ["BASE_PATH"])[-1].strip()
+                track_info = db_client.get_track_info_by_path(path)
+                tracks.append(
+                    {
+                        "index": index,
+                        "title": track_info[0],
+                        "artist": track_info[1],
+                    }
+                )
+                index += 1
+    return tracks
+
+
+@app.get("/shows")
+def get_shows():
+    with RaxdioDB(os.environ["PG_DB_URL"]) as db:
+        shows = db.get_shows()
+    return shows
 
 
 @app.post("/auto_download")
@@ -56,6 +187,14 @@ def perform_auto_download(artist_name: str, album_name: str, tracks_cnt: int):
         s.sendall(json_message.encode("utf-8"))
     print("CALLS COMPLETE")
     return {"message": "download should start"}
+
+
+@app.post("/download_playlist")
+async def perform_auto_download(
+    playlist_id: str, background_tasks: BackgroundTasks
+):
+    background_tasks.add_task(workflow_spotify_playlist, playlist_id)
+    return {"message": "Data submitted for processing."}
 
 
 @app.post("/status_message")
@@ -135,14 +274,6 @@ def create_user(username: str):
     with RaxdioDB(os.environ["PG_DB_URL"]) as db:
         db_user = db.insert_user(username)
     return db_user
-
-
-from pydantic import BaseModel
-
-
-class Message(BaseModel):
-    username: str
-    content: str
 
 
 @app.post("/message")

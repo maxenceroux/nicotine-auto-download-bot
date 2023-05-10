@@ -1,6 +1,14 @@
 import discord
 import os
-from utils import *
+from utils import (
+    get_playlist_info,
+    album_already_exists,
+    call_auto_download,
+    get_bandcamp_info,
+    get_spotify_info,
+    create_playlist_file_from_spotify_playlist,
+    create_playlist_file_from_navidrome_playlist,
+)
 
 intents = discord.Intents.default()
 intents.message_content = True

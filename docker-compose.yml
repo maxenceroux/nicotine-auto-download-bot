@@ -12,8 +12,10 @@ services:
       - ./app:/app
       - ./clients:/app/clients
       - ./alembic:/app/alembic
+      - ./bot/utils.py:/app/utils.py
       - ${PLAYLIST_DIR}:/playlists
-      - ${DB_URL}:/db
+      - ${DB_URL}:/db/music.db
+      - ${MUSIC_DIR}:/music
     env_file:
       - .env
   bot:
@@ -41,6 +43,6 @@ services:
       - postgres-raxdio:/data/postgres
       - ./app/queries:/scripts
     ports:
-      - "5432:5432"
+      - "5433:5432"
 volumes:
   postgres-raxdio: null

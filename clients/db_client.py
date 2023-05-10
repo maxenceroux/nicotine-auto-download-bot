@@ -1,7 +1,7 @@
 import sqlite3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import User, Message, HistorySongs
+from models import User, Message, HistorySongs, Show
 import datetime
 import pytz
 
@@ -19,6 +19,34 @@ class DBClient:
         self.cursor.execute(query, (id,))
         result = self.cursor.fetchone()
         return result[0] if result else None
+
+    def get_medial_file_path_by_title(self, title):
+        query = f"SELECT path FROM media_file WHERE title like ?"
+        self.cursor.execute(query, ("%" + title + "%",))
+        result = self.cursor.fetchone()
+        return result[0] if result else None
+
+    def track_exists(self, title):
+        query = f"SELECT path FROM media_file WHERE title like ?"
+        self.cursor.execute(query, ("%" + title + "%",))
+        result = self.cursor.fetchone()
+        if result:
+            return True
+        return False
+
+    def get_track_info_by_path(self, path):
+        query = f"SELECT title, artist FROM media_file WHERE path = ?"
+        self.cursor.execute(query, (path,))
+        result = self.cursor.fetchone()
+        return result if result else None
+
+    def album_exists(self, album_name):
+        query = "SELECT path FROM media_file WHERE album LIKE ?"
+        self.cursor.execute(query, ("%" + album_name + "%",))
+        result = self.cursor.fetchone()
+        if result:
+            return True
+        return False
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cursor.close()
@@ -111,6 +139,61 @@ class RaxdioDB:
             .all()
         )
         return tracks
+
+    def create_show(
+        self,
+        start_time: datetime.datetime,
+        author: str,
+        name: str,
+        playlist_url: str,
+        description: str,
+        ig_url: str = None,
+        bc_url: str = None,
+        sc_url: str = None,
+    ):
+        show = (
+            self.session.query(Show)
+            .filter(Show.start_time == start_time)
+            .first()
+        )
+        if show:
+            return False
+        new_show = Show(
+            start_time=start_time,
+            author=author,
+            name=name,
+            playlist_url=playlist_url,
+            description=description,
+            ig_url=ig_url,
+            bandcamp_url=bc_url,
+            soundcloud_url=sc_url,
+        )
+        self.session.add(new_show)
+        self.session.commit()
+        return new_show
+
+    def set_show_playlist_path(self, start_time: datetime.datetime, path: str):
+        show = (
+            self.session.query(Show)
+            .filter(Show.start_time == start_time)
+            .first()
+        )
+        if show:
+            show.playlist_path = path
+            self.session.commit()
+        return show
+
+    def get_shows(self):
+        shows = (
+            self.session.query(Show)
+            .filter(
+                Show.start_time >= datetime.datetime.now(),
+                Show.start_time
+                <= datetime.datetime.now() + datetime.timedelta(days=7),
+            )
+            .all()
+        )
+        return shows
 
     def __enter__(self):
         return self

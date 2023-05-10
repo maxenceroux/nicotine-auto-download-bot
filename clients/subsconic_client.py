@@ -26,6 +26,15 @@ class SubsonicClient:
         }
         self._base_url = f"http://{host}:{port}/rest"
 
+    def start_scan(self):
+        url = f"{self._base_url}/startScan"
+        try:
+            response = requests.get(url, params=self.params)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            raise SystemExit(err)
+        return True
+
     def get_playlist_id(self, playlist_name):
         url = f"{self._base_url}/getPlaylists"
         try:

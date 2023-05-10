@@ -38,3 +38,17 @@ class HistorySongs(Base):
     artist = Column(String)
     artist_image = Column(String)
     description = Column(String)
+
+
+class Show(Base):
+    __tablename__ = "shows"
+    id = Column(Integer, primary_key=True, index=True)
+    start_time = Column(DateTime(timezone=True))
+    author = Column(String)
+    name = Column(String)
+    playlist_url = Column(String)
+    playlist_path = Column(String)
+    description = Column(String)
+    ig_url = Column(String)
+    bandcamp_url = Column(String)
+    soundcloud_url = Column(String)
