@@ -179,6 +179,16 @@ def save_playlist(playlist: Playlist):
                     f.write(f"{os.environ['BASE_PATH']}{track_path}\n")
                 else:
                     f.write(f"{os.environ['BASE_PATH']}/music/{track.title}\n")
+    if show_date.date() == datetime.now().date():
+        hour_str = show_date.strftime("%H")
+        hour_playlist_path = f"/playlists/{hour_str}.m3u"
+        try:
+            shutil.copy(playlist_path, hour_playlist_path)
+            print(
+                f"Playlist copy created successfully with name {hour_playlist_path}"
+            )
+        except:
+            return {"message": "unsuccessful playlist copy creation"}
 
 
 @app.get("/playlist_tracks")

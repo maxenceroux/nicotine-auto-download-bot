@@ -147,16 +147,6 @@ def workflow_spotify_playlist(
             f.write("#EXTM3U\n")
             for track in tracks_path:
                 f.write(f"{os.environ['BASE_PATH']}{track}\n")
-        if show_slot.date() == datetime.now().date():
-            hour_str = show_slot.strftime("%H")
-            hour_playlist_path = f"/playlists/{hour_str}.m3u"
-            try:
-                shutil.copy(playlist_path, hour_playlist_path)
-                print(
-                    f"Playlist copy created successfully with name {hour_playlist_path}"
-                )
-            except:
-                return {"message": "unsuccessful playlist copy creation"}
         print("Playlist created successfully")
         with RaxdioDB(os.environ["PG_DB_URL"]) as db:
             db.set_show_playlist_path(show_slot, playlist_path)
