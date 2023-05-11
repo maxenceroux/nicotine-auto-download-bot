@@ -17,6 +17,7 @@ from utils import (
     call_auto_download,
     workflow_spotify_playlist,
 )
+import shutil
 
 app = FastAPI()
 
@@ -70,6 +71,46 @@ class Playlist(BaseModel):
     author: str
     name: str
     ordered_tracks: List[Track]
+
+
+@app.post("/daily_shows")
+def create_daily_shows():
+    with RaxdioDB(os.environ["PG_DB_URL"]) as db:
+        shows = db.get_daily_shows()
+    playlist_slots = [
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "00",
+    ]
+    for slot in playlist_slots:
+        is_found = False
+        for show in shows:
+            hour_str = show.start_time.strftime("%H")
+            if hour_str == slot:
+                old_playlist_path = show.playlist_path
+                daily_playlist_path = f"/playlists/{hour_str}.m3u"
+                shutil.copy(old_playlist_path, daily_playlist_path)
+                is_found = True
+        if not is_found:
+            shutil.copy(f"/playlists/raxdio.m3u", f"/playlists/{slot}.m3u")
+
+    return shows
 
 
 @app.get("/current_show")

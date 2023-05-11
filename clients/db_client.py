@@ -198,6 +198,22 @@ class RaxdioDB:
         )
         return shows
 
+    def get_daily_shows(self):
+        today = datetime.datetime.now().date()
+        shows = (
+            self.session.query(Show)
+            .filter(
+                Show.start_time
+                >= datetime.datetime.combine(today, datetime.time.min),
+                Show.start_time
+                <= datetime.datetime.combine(today, datetime.time.max),
+                Show.playlist_path != None,
+            )
+            .all()
+        )
+
+        return shows
+
     def get_current_show(self):
         now = datetime.datetime.now()
         one_hour_ago = now - datetime.timedelta(hours=1)
