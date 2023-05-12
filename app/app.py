@@ -154,6 +154,10 @@ def create_show(slot: Slot, background_tasks: BackgroundTasks):
         slot.author,
         slot_date,
     )
+    webhook = SyncWebhook.from_url(os.environ["DISCORD_WEBHOOK_URL"])
+    webhook.send(
+        f"{slot.author} created a show with name {slot.name} on {slot.start_datetime}"
+    )
     return {"message": "Data submitted for processing."}
 
 
