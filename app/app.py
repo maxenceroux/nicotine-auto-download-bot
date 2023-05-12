@@ -190,7 +190,7 @@ def save_playlist(playlist: Playlist):
                     track_path = db_client.get_medial_file_path_by_title(
                         track.title
                     )
-                    f.write(f"{os.environ['BASE_PATH']}{track_path}\n")
+                    f.write(f"{os.environ['BASE_PATH']}{track_path.split('/music')[1]}\n")
                 else:
                     f.write(f"{os.environ['BASE_PATH']}/music/{track.title}\n")
     if show_date.date() == datetime.now().date():
@@ -219,6 +219,7 @@ def get_playlist_tracks(show_time: str, show_name: str, show_author: str):
             index = 1
             for track in f:
                 path = track.split(os.environ["BASE_PATH"])[-1].strip()
+                path=f"/music{path}"
                 track_info = db_client.get_track_info_by_path(path)
                 tracks.append(
                     {
