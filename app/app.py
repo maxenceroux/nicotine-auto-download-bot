@@ -18,6 +18,7 @@ from utils import (
     workflow_spotify_playlist,
 )
 import shutil
+import random
 
 app = FastAPI()
 
@@ -108,7 +109,16 @@ def create_daily_shows():
                 shutil.copy(old_playlist_path, daily_playlist_path)
                 is_found = True
         if not is_found:
-            shutil.copy(f"/playlists/raxdio.m3u", f"/playlists/{slot}.m3u")
+            src_playlist = "/playlists/raxdio.m3u"
+            dest_playlist = f"/playlists/{slot}.m3u"
+            with open(src_playlist, "r") as f:
+                lines = f.readlines()
+            header = lines[0]
+            tracks = lines[1:]
+            random.shuffle(tracks)
+            with open(dest_playlist, "w") as f:
+                f.write(header)
+                f.writelines(tracks)
 
     return shows
 
