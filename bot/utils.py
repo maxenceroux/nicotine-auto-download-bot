@@ -7,7 +7,7 @@ from unidecode import unidecode
 from clients.db_client import DBClient, RaxdioDB
 import time
 from datetime import datetime
-import shutil
+import gtts
 
 
 def call_auto_download(album_info: dict):
@@ -103,7 +103,11 @@ def create_playlist_file_from_navidrome_playlist(
 
 
 def workflow_spotify_playlist(
-    playlist_id: str, show_name: str, show_author: str, show_slot: datetime
+    playlist_id: str,
+    show_name: str,
+    show_author: str,
+    show_slot: datetime,
+    show_description: str = None,
 ):
     albums_info = get_playlist_info(playlist_id, is_url=False)
     sp_client = SpotifyController(
@@ -140,11 +144,24 @@ def workflow_spotify_playlist(
             if track_path:
                 tracks_path.append(track_path)
     try:
+        tts_text = f"""
+            You are now listening to {show_name} by {show_author} on Raxdio. 
+            {show_description} """
+        tts_description = gtts.gTTS(tts_text, lang="fr")
+        tts_description.save(
+            f"/music/{show_time_str}_{show_name}_{show_author}_tts.mp3"
+        )
+    except:
+        print("Can't tts")
+    try:
         playlist_path = (
             f"/playlists/{show_time_str}_{show_name}_{show_author}.m3u"
         )
         with open(playlist_path, "w+") as f:
             f.write("#EXTM3U\n")
+            f.write(
+                f"{os.environ['BASE_PATH']}/{show_time_str}_{show_name}_{show_author}_tts.mp3"
+            )
             for track in tracks_path:
                 f.write(f"{os.environ['BASE_PATH']}{track}\n")
         print("Playlist created successfully")
