@@ -160,10 +160,10 @@ def workflow_spotify_playlist(
         with open(playlist_path, "w+") as f:
             f.write("#EXTM3U\n")
             f.write(
-                f"{os.environ['BASE_PATH']}/{show_time_str}_{show_name}_{show_author}_tts.mp3"
+                f"{os.environ['BASE_PATH']}/{show_time_str}_{show_name}_{show_author}_tts.mp3\n"
             )
             for track in tracks_path:
-                f.write(f"{os.environ['BASE_PATH']}{track}\n")
+                f.write(f"{os.environ['BASE_PATH']}{track.split('/music')[1]}\n")
         print("Playlist created successfully")
         with RaxdioDB(os.environ["PG_DB_URL"]) as db:
             db.set_show_playlist_path(show_slot, playlist_path)
