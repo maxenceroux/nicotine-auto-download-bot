@@ -6,6 +6,8 @@ services:
       dockerfile: Dockerfile.app
     container_name: nicotine-fastapi
     command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - postgres
     ports:
       - 8002:8000
     volumes:
@@ -23,6 +25,8 @@ services:
       context: .
       dockerfile: Dockerfile.bot
     container_name: nicotine-discord-bot
+    depends_on:
+      - postgres
     env_file:
       - .env
     volumes:
@@ -43,6 +47,6 @@ services:
       - postgres-raxdio:/data/postgres
       - ./app/queries:/scripts
     ports:
-      - "5433:5432"
+      - "5432:5432"
 volumes:
   postgres-raxdio: null
